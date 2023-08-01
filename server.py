@@ -10,7 +10,6 @@ connected = set()
 
 # The main behavior function for this server
 async def echo(websocket, path):
-    print("A client just connected")
     # Store a copy of the connected client
     connected.add(websocket)
     # Handle incoming messages

@@ -1,12 +1,23 @@
 import websockets
 import asyncio
 import time
-from client_tests import Clienttests
+import logging
+import sqlite3
+
+logging.basicConfig(filename="std.log",
+                    format='%(asctime)s %(message)s',
+                    filemode='a')
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
 
 # The main function that will handle connection and communication
 # with the server
 
-tester = Clienttests()
+con = sqlite3.connect("heartbeat.db", check_same_thread=False)
+cur = con.cursor()
+cur.execute("CREATE TABLE IF NOT EXISTS responses(time, message, type)")
 
 async def listen():
     url = "ws://127.0.0.1:7890"
@@ -15,17 +26,26 @@ async def listen():
         # Send a greeting message
         await ws.send("Hello Server!")
         # Stay alive forever, listening to incoming msgs
-        print(time.time())
+        # print(time.time())
         previous_heart_beat_time = ''
         while True:
-            time.sleep(.5)
             msg = await ws.recv()
-            print(msg)
+            # logger.info(msg)
             if "heartbeat" in msg:
-                current_heart_beat_time = time.time()
-                tester.heartbeat_test(msg, current_heart_beat_time, previous_heart_beat_time)
-                print("out of tester method")
-                previous_heart_beat_time = current_heart_beat_time
+                try:
+                    cur.execute(f"""INSERT INTO responses VALUES({time.time()}, "heartbeat", 'heartbeat')""")
+                    con.commit()
+                    await ws.send("Heart BEat code")
+                except Exception as e:
+                    logging.info(e)
+
+            else:
+                try:
+                    cur.execute(f"""INSERT INTO responses VALUES({time.time()}, "not heartbeat", 'not heartbeat')""")
+                    con.commit()
+                except Exception as e:
+                    logging.info(e)
+        con.close()
 
 
 asyncio.get_event_loop().run_until_complete(listen())
